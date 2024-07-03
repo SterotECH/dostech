@@ -26,16 +26,25 @@ class UserFactory extends Factory
      */
     public function definition(): array
     {
+        $gender = fake()->randomElement(['male', 'female']);
+        $firstName = fake()->firstName($gender);
+        $lastName = fake()->lastName();
+        $otherNames = fake()->optional()->firstName($gender);
+
         return [
-            'name' => fake()->name(),
+            'first_name' => $firstName,
+            'last_name' => $lastName,
+            'other_name' => $otherNames,
+            'username' => fake()->unique()->userName,
+            'phone' => fake()->unique()->phoneNumber,
             'email' => fake()->unique()->safeEmail(),
+            'role' => fake()->randomElement(['admin', 'house_master', 'user']),
             'email_verified_at' => now(),
             'password' => static::$password ??= Hash::make('password'),
             'two_factor_secret' => null,
             'two_factor_recovery_codes' => null,
             'remember_token' => Str::random(10),
             'profile_photo_path' => null,
-            'current_team_id' => null,
         ];
     }
 
@@ -49,24 +58,18 @@ class UserFactory extends Factory
         ]);
     }
 
-    /**
-     * Indicate that the user should have a personal team.
-     */
-    public function withPersonalTeam(callable $callback = null): static
+    public function admin()
     {
-        if (! Features::hasTeamFeatures()) {
-            return $this->state([]);
-        }
+        return $this->state(fn (array $attributes) => ['role' => 'admin']);
+    }
 
-        return $this->has(
-            Team::factory()
-                ->state(fn (array $attributes, User $user) => [
-                    'name' => $user->name.'\'s Team',
-                    'user_id' => $user->id,
-                    'personal_team' => true,
-                ])
-                ->when(is_callable($callback), $callback),
-            'ownedTeams'
-        );
+    public function houseMaster()
+    {
+        return $this->state(fn (array $attributes) => ['role' => 'house_master']);
+    }
+
+    public function user()
+    {
+        return $this->state(fn (array $attributes) => ['role' => 'user']);
     }
 }

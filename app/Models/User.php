@@ -2,15 +2,17 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
+use App\Enums\UserRole;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Laravel\Sanctum\HasApiTokens;
+use Laravel\Jetstream\HasProfilePhoto;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
-use Laravel\Jetstream\HasProfilePhoto;
-use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     use HasApiTokens;
     use HasFactory;
@@ -24,9 +26,15 @@ class User extends Authenticatable
      * @var array<int, string>
      */
     protected $fillable = [
-        'name',
+        'first_name',
+        'last_name',
+        'other_name',
+        'username',
+        'phone',
+        'role',
         'email',
         'password',
+        'profile_photo_path'
     ];
 
     /**
@@ -60,6 +68,47 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'role' => UserRole::class,
         ];
+    }
+
+    /**
+     * Get the houseMaster that owns the User
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function houseMaster(): BelongsTo
+    {
+        return $this->belongsTo(HouseMaster::class);
+    }
+
+    public function isAdmin()
+    {
+        return $this->role === UserRole::ADMINISTRATOR;
+    }
+
+    public function isHouseMaster()
+    {
+        return $this->role === UserRole::HOUSE_MASTER;
+    }
+
+    public function isUser()
+    {
+        return $this->role === UserRole::USER;
+    }
+
+    /**
+     * Get the full name of the user
+     *
+     * @param  string  $value
+     * @return string
+     */
+    public function getNameAttribute()
+    {
+        return trim(
+            $this->first_name . ' ' .
+                ($this->other_name ? $this->other_name . ' ' : '') .
+                $this->last_name
+        );
     }
 }
